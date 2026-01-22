@@ -9,10 +9,8 @@ const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
  */
 const extractJsonFromText = (text: string): any => {
   try {
-    // Attempt to find JSON inside markdown code blocks first
     const match = text.match(/```json\s?([\s\S]*?)```/) || text.match(/\{[\s\S]*\}/);
     if (!match) return null;
-    
     const cleaned = match[1] || match[0];
     return JSON.parse(cleaned.trim());
   } catch (e) {
@@ -35,27 +33,31 @@ export const generateTripItinerary = async (
     : `one-way trip from ${start} to ${end}`;
 
   const prompt = `
-    Act as a Deep-Search Cycling Scout. Use Google Search to find "Ghost Places" (0-5 reviews, niche forum mentions, or nameless vista points) for a ${routeType} over ${days} days.
+    Act as a Deep-Search Cycling Scout. Use Google Search to find "Ghost Places" for a ${routeType} over ${days} days.
     
-    CRITICAL INSTRUCTIONS:
-    1. Search for places that NO ONE expects. Cross-reference niche cycling blogs and satellite views.
+    CRITICAL SEARCH INSTRUCTIONS:
+    1. Search for specific landmarks, ruins, or scenic points that are searchable on Google Maps but have very few reviews.
     2. Preferences: "${preferences}".
-    3. The Google Maps URL MUST include the Start, Destination, AND every single hidden gem discovered as intermediate waypoints in a directions link.
+    3. IMPORTANT: Every location name MUST be high-precision for Google Maps. ALWAYS include the State and Country. (e.g. "Karikattukuppam Tsunami Ruins, Tamil Nadu, India").
+    4. Provide exactly 1 or 2 high-quality points of interest per day. 
+    5. Keep the total unique locations across the whole trip to 8 or fewer. This ensures the Google Maps Directions link stays valid.
     
     OUTPUT FORMAT (Raw JSON only):
     {
       "tripName": "string",
-      "summary": "string explaining why these spots were hidden",
+      "summary": "Summary of discovery logic.",
       "totalDistance": "string",
-      "googleMapsLink": "https://www.google.com/maps/dir/Start/Hidden1/Hidden2/.../End",
+      "googleMapsLink": "", 
       "itinerary": [
         {
           "day": number,
-          "startLocation": "string",
-          "endLocation": "string",
+          "startLocation": "City, State, Country",
+          "endLocation": "City, State, Country",
           "distance": "string",
           "routeDescription": "string",
-          "pointsOfInterest": [{ "name": "string", "description": "curator note" }],
+          "pointsOfInterest": [
+            { "name": "Specific Full Name, State, Country", "description": "curator note" }
+          ],
           "meals": { "breakfast": "string", "lunch": "string", "dinner": "string" },
           "accommodation": "string"
         }
@@ -69,7 +71,6 @@ export const generateTripItinerary = async (
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
-        // responseMimeType and responseSchema are NOT allowed with grounding tools
       }
     });
 
@@ -77,7 +78,7 @@ export const generateTripItinerary = async (
     if (!text) throw new Error("Empty response from AI");
 
     const plan = extractJsonFromText(text);
-    if (!plan) throw new Error("Could not parse trip plan from AI response.");
+    if (!plan) throw new Error("Could not parse trip plan. Please try again with a slightly different route.");
 
     const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
@@ -95,7 +96,6 @@ export const getPlaceDetails = async (query: string): Promise<{ details: PlaceDe
   const prompt = `
     Return details for: "${query}". 
     JSON Format: {"name": string, "rating": number, "address": string, "summary": string}.
-    If it has 0 reviews, describe its physical location based on Maps data.
   `;
 
   try {
@@ -104,16 +104,15 @@ export const getPlaceDetails = async (query: string): Promise<{ details: PlaceDe
       contents: prompt,
       config: {
         tools: [{ googleMaps: {} }],
-        // responseMimeType and responseSchema are NOT allowed with grounding tools
       }
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response from AI");
+    if (!text) throw new Error("No response");
 
     const details = extractJsonFromText(text) || { 
       name: query, 
-      summary: text.length < 200 ? text : "Could not verify exact details." 
+      summary: "Verification failed." 
     };
 
     const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
