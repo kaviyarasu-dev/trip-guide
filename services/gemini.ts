@@ -44,32 +44,31 @@ export const generateTripItinerary = async (
 ): Promise<{ plan: TripPlan; groundingSources: any[] }> => {
   const ai = getAiClient();
   
-  const routeType = isRoundTrip 
-    ? `loop starting and ending in ${start}, turning around at or visiting ${end}` 
-    : `one-way expedition from ${start} to ${end}`;
-
-  // Updated Persona to be a Professional Cycling Adventure Planner
+  // Explicitly defining the constraints for the model to prevent hallucinating different start/end points
   const prompt = `
     Act as a World-Class Professional Cycling Adventure Planner.
-    Plan a solo bike trip: "${routeType}" for ${days} days.
+    
+    TASK: Create a detailed ${days}-day cycling itinerary.
+    
+    STRICT ROUTE PARAMETERS:
+    - STARTING LOCATION: ${start}
+    - DESTINATION / TURNAROUND POINT: ${end}
+    - TYPE: ${isRoundTrip ? 'Round Trip (Loop back to Start)' : 'One Way (End at Destination)'}
     
     USER PREFERENCES: "${preferences}"
 
-    CORE MISSION:
-    Create a safe yet adventurous route. Balance scenic beauty with cycling practicality.
-    Focus on: Quiet backroads, scenic byways, bike-friendly infrastructure, and interesting cultural or natural stops.
-    
-    CONSTRAINTS:
-    1. **Realism**: Max ~80-100km/day (unless preferences imply elite fitness).
-    2. **Precision**: All location names must be real and searchable on Google Maps (include City, State).
-    3. **Route Link Safety**: Keep major waypoints clear to ensure Google Maps compatibility.
-    4. **Output**: STRICTLY JSON.
+    CRITICAL INSTRUCTIONS:
+    1. **LOCATION ADHERENCE**: You MUST start the itinerary exactly at "${start}" and visit "${end}". Do NOT change these locations to fit a "standard" distance or move the trip to a nearby "better" location.
+    2. **DISTANCE HANDLING**: If the distance between ${start} and ${end} is too long for ${days} days of cycling (assuming ~80-100km/day average), you MUST include "Vehicle Transfer" or "Train Ride" segments in the route description to bridge the gaps. Do NOT shorten the trip to a local area.
+    3. **Stopovers**: Choose logical stopover towns/cities between the start and destination.
+    4. **Safety**: Prioritize safe roads.
+    5. **Output**: STRICTLY JSON.
 
     JSON STRUCTURE:
     {
       "tripName": "Inspiring Trip Title",
       "summary": "Professional summary of the route, terrain, and highlights.",
-      "totalDistance": "Total km",
+      "totalDistance": "Total km (include cycling vs transfer split if applicable)",
       "googleMapsLink": "", 
       "itinerary": [
         {
@@ -77,7 +76,7 @@ export const generateTripItinerary = async (
           "startLocation": "City, State",
           "endLocation": "City, State",
           "distance": "string",
-          "routeDescription": "Description of the ride (elevation, road quality, scenery).",
+          "routeDescription": "Description of the ride (elevation, road quality, scenery). Mention if a transfer is needed.",
           "pointsOfInterest": [
             { 
               "name": "Searchable Landmark Name, State", 
