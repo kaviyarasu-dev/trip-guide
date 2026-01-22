@@ -9,6 +9,7 @@ export interface TripRequest {
 export interface PointOfInterest {
   name: string;
   description: string;
+  tags: string[]; // e.g., "Ruins", "Danger", "Viewpoint"
 }
 
 export interface DayItinerary {

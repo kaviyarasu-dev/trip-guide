@@ -37,7 +37,7 @@ const App = () => {
       setGroundingSources(result.groundingSources);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Failed to uncover hidden gems. This usually happens if the route is too remote or the AI timed out. Please try again.");
+      setError(err.message || "Mission aborted. The signal was lost in the remote terrain. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -174,7 +174,7 @@ const App = () => {
                   {loading ? (
                     <>
                       <Loader className="animate-spin -ml-1 mr-3 h-6 w-6" />
-                      Deep Scanning...
+                      Initializing...
                     </>
                   ) : (
                     <>
@@ -195,24 +195,29 @@ const App = () => {
 
         {plan && <ItineraryDisplay plan={plan} groundingSources={groundingSources} />}
         
-        {loading && plan === null && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6">
-             <div className="bg-white p-12 rounded-[2.5rem] shadow-2xl flex flex-col items-center max-w-md w-full text-center border border-white/20">
-                <div className="relative mb-8">
-                   <div className="absolute inset-0 bg-blue-100 rounded-full animate-ping opacity-25"></div>
-                   <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-full shadow-lg">
-                      <Compass className="w-10 h-10 text-white animate-[spin_4s_linear_infinite]" />
+        {loading && !plan && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-6 transition-opacity duration-300">
+             <div className="bg-white p-10 md:p-12 rounded-[2.5rem] shadow-2xl flex flex-col items-center max-w-md w-full text-center border border-white/20 relative overflow-hidden">
+                
+                {/* Background pulse */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-100 rounded-full animate-ping opacity-20 pointer-events-none"></div>
+
+                <div className="relative z-10 mb-8">
+                   <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-2xl shadow-lg shadow-blue-500/30">
+                      <Compass className="w-12 h-12 text-white animate-[spin_3s_linear_infinite]" />
                    </div>
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">Investigating the Shadows...</h3>
-                <div className="space-y-4 text-slate-500 font-medium text-lg">
-                  <p className="animate-pulse">Scouring cycling forum archives (1998-present)...</p>
-                  <p className="animate-pulse delay-75">Parsing topographic anomalies for hidden springs...</p>
-                  <p className="animate-pulse delay-150">Filtering for stops with 0 reviews...</p>
-                  <p className="text-blue-500 text-sm font-bold uppercase tracking-widest pt-4">Constructing Multi-Stop Route Map</p>
+                
+                <h3 className="text-2xl md:text-3xl font-black text-slate-900 mb-4 tracking-tight">Scanning Terrain...</h3>
+                
+                <div className="space-y-3 text-slate-500 font-medium text-base">
+                  <p className="animate-pulse">Triangulating ghost towns & ruins...</p>
+                  <p className="animate-pulse delay-100 opacity-80">Verifying road surface integrity...</p>
+                  <p className="animate-pulse delay-200 opacity-60">Consulting satellite archives...</p>
                 </div>
+                
                 <div className="mt-10 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                   <div className="bg-blue-600 h-full animate-[loading_4s_ease-in-out_infinite]"></div>
+                   <div className="bg-blue-600 h-full w-1/3 animate-[loading_2s_ease-in-out_infinite]"></div>
                 </div>
              </div>
           </div>
@@ -220,9 +225,9 @@ const App = () => {
       </main>
       <style>{`
         @keyframes loading {
-          0% { width: 0%; transform: translateX(-100%); }
-          50% { width: 70%; transform: translateX(0%); }
-          100% { width: 100%; transform: translateX(100%); }
+          0% { width: 10%; transform: translateX(-50%); }
+          50% { width: 50%; transform: translateX(50%); }
+          100% { width: 10%; transform: translateX(150%); }
         }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
