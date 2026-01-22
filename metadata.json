@@ -1,0 +1,5 @@
+{
+  "name": "VeloVenture Planner",
+  "description": "A professional AI-powered cycling adventure planner that generates comprehensive itineraries with routes, POIs, and logistics using Google Gemini with Search and Maps grounding.",
+  "requestFramePermissions": []
+}
