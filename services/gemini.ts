@@ -5,14 +5,21 @@ import { TripPlan, PlaceDetails } from "../types";
 const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const extractJsonFromText = (text: string): any => {
+  // 1. Try direct parsing (Standard for responseMimeType: 'application/json')
   try {
-    // 1. Try finding a markdown block
+    return JSON.parse(text);
+  } catch (e) {
+    // Continue to fallback methods if direct parse fails
+  }
+
+  try {
+    // 2. Try finding a markdown block
     const markdownMatch = text.match(/```json\s?([\s\S]*?)```/);
     if (markdownMatch) {
       return JSON.parse(markdownMatch[1].trim());
     }
 
-    // 2. Try finding the raw JSON object structure
+    // 3. Try finding the raw JSON object structure manually
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
     
@@ -38,30 +45,30 @@ export const generateTripItinerary = async (
   const ai = getAiClient();
   
   const routeType = isRoundTrip 
-    ? `loop starting and ending in ${start}, turning around at ${end}` 
+    ? `loop starting and ending in ${start}, turning around at or visiting ${end}` 
     : `one-way expedition from ${start} to ${end}`;
 
-  // Using gemini-2.5-flash for faster generation latency while maintaining good reasoning
+  // Updated Persona to be a Professional Cycling Adventure Planner
   const prompt = `
-    Act as an Investigative Journalist and Extreme Cyclist.
-    Plan a "${routeType}" for ${days} days.
+    Act as a World-Class Professional Cycling Adventure Planner.
+    Plan a solo bike trip: "${routeType}" for ${days} days.
     
     USER PREFERENCES: "${preferences}"
 
     CORE MISSION:
-    Find "The Invisible Layer" of the map. No tourist traps. 
-    Focus on: Abandoned Infrastructure, Geological Oddities, Local Mythology, and nameless scenic overlooks.
+    Create a safe yet adventurous route. Balance scenic beauty with cycling practicality.
+    Focus on: Quiet backroads, scenic byways, bike-friendly infrastructure, and interesting cultural or natural stops.
     
     CONSTRAINTS:
-    1. **Realism**: Max 100km/day. 
-    2. **Precision**: All location names must be searchable on Google Maps (include City/State).
-    3. **Route Link Safety**: Total unique stops must be under 9 to keep the Google Maps link valid.
-    4. **Output**: STRICTLY VALID JSON. No conversational filler.
+    1. **Realism**: Max ~80-100km/day (unless preferences imply elite fitness).
+    2. **Precision**: All location names must be real and searchable on Google Maps (include City, State).
+    3. **Route Link Safety**: Keep major waypoints clear to ensure Google Maps compatibility.
+    4. **Output**: STRICTLY JSON.
 
     JSON STRUCTURE:
     {
-      "tripName": "Mysterious Title",
-      "summary": "Exciting summary of the hidden gems found.",
+      "tripName": "Inspiring Trip Title",
+      "summary": "Professional summary of the route, terrain, and highlights.",
       "totalDistance": "Total km",
       "googleMapsLink": "", 
       "itinerary": [
@@ -70,12 +77,12 @@ export const generateTripItinerary = async (
           "startLocation": "City, State",
           "endLocation": "City, State",
           "distance": "string",
-          "routeDescription": "Vivid description of the terrain and vibe.",
+          "routeDescription": "Description of the ride (elevation, road quality, scenery).",
           "pointsOfInterest": [
             { 
               "name": "Searchable Landmark Name, State", 
-              "description": "Why is this extraordinary?",
-              "tags": ["Ruins", "Nature", "Eerie"] 
+              "description": "Why stop here?",
+              "tags": ["Nature", "Cafe", "Viewpoint", "History"] 
             }
           ],
           "meals": { "breakfast": "string", "lunch": "string", "dinner": "string" },
@@ -87,10 +94,11 @@ export const generateTripItinerary = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
       }
     });
 
@@ -98,7 +106,7 @@ export const generateTripItinerary = async (
     if (!text) throw new Error("Empty response from AI");
 
     const plan = extractJsonFromText(text);
-    if (!plan) throw new Error("Failed to parse the mission plan. Please try a shorter route or different location.");
+    if (!plan) throw new Error("Failed to parse the mission plan. Please try again.");
 
     const groundingSources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
 
@@ -115,15 +123,16 @@ export const getPlaceDetails = async (query: string): Promise<{ details: PlaceDe
   
   const prompt = `
     Get details for: "${query}".
-    Return JSON: {"name": string, "rating": number, "address": string, "summary": "Short reality check description."}.
+    Return JSON: {"name": string, "rating": number, "address": string, "summary": "Short helpful description."}.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview', 
       contents: prompt,
       config: {
         tools: [{ googleMaps: {} }],
+        responseMimeType: 'application/json',
       }
     });
 
